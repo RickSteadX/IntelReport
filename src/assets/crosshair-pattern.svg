@@ -1,0 +1,12 @@
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="crosshairs" width="50" height="50" patternUnits="userSpaceOnUse">
+      <circle cx="25" cy="25" r="10" fill="none" stroke="#266026" stroke-width="0.5" opacity="0.2"/>
+      <line x1="25" y1="15" x2="25" y2="35" stroke="#266026" stroke-width="0.5" opacity="0.2"/>
+      <line x1="15" y1="25" x2="35" y2="25" stroke="#266026" stroke-width="0.5" opacity="0.2"/>
+      <circle cx="25" cy="25" r="1" fill="#266026" opacity="0.2"/>
+    </pattern>
+  </defs>
+  <rect width="100" height="100" fill="#0A0C0A"/>
+  <rect width="100" height="100" fill="url(#crosshairs)"/>
+</svg>
