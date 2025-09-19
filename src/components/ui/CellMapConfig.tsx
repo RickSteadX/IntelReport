@@ -84,7 +84,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
             <div className="space-y-3">
               <div className="flex flex-col">
                 <label className="text-sm text-gray-300 mb-1">
-                  Діапазон (Назва/Значення)
+                  Діапазон (Назва/Вражено/Знищено)
                 </label>
                 {isEditing ? (
                   <input
@@ -92,7 +92,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                     value={mappings['strike.range'] || ''}
                     onChange={(e) => handleInputChange('strike.range', e.target.value)}
                     className="bg-tactical-dark border border-tactical-green-700 rounded px-2 py-1 text-sm font-mono"
-                    placeholder="Наприклад: C4:D15"
+                    placeholder="Наприклад: B4:D15"
                   />
                 ) : (
                   <div className="bg-tactical-dark bg-opacity-50 border border-tactical-green-800 rounded px-2 py-1 text-sm font-mono">
@@ -100,7 +100,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                   </div>
                 )}
                 <div className="text-xs text-gray-500 mt-1">
-                  Формат: Діапазон | Приклад: C4:D15 (назви зліва, значення справа)
+                  Формат: Діапазон | Приклад: B4:D15 (назви в B, вражено в C, знищено в D)
                 </div>
               </div>
             </div>
@@ -113,7 +113,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
             <div className="space-y-3">
               <div className="flex flex-col">
                 <label className="text-sm text-gray-300 mb-1">
-                  Діапазон (Назва/Значення)
+                  Діапазон (Назва/Виявлено)
                 </label>
                 {isEditing ? (
                   <input
@@ -121,7 +121,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                     value={mappings['recon.range'] || ''}
                     onChange={(e) => handleInputChange('recon.range', e.target.value)}
                     className="bg-tactical-dark border border-tactical-green-700 rounded px-2 py-1 text-sm font-mono"
-                    placeholder="Наприклад: C18:C20"
+                    placeholder="Наприклад: B18:C20"
                   />
                 ) : (
                   <div className="bg-tactical-dark bg-opacity-50 border border-tactical-green-800 rounded px-2 py-1 text-sm font-mono">
@@ -129,7 +129,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                   </div>
                 )}
                 <div className="text-xs text-gray-500 mt-1">
-                  Формат: Діапазон | Приклад: C18:C20 (назви зліва, значення справа)
+                  Формат: Діапазон | Приклад: B18:C20 (назви в B, виявлено в C)
                 </div>
               </div>
             </div>
@@ -148,7 +148,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                     value={mappings['summary.totalFlights'] || ''}
                     onChange={(e) => handleInputChange('summary.totalFlights', e.target.value)}
                     className="bg-tactical-dark border border-tactical-green-700 rounded px-2 py-1 text-sm font-mono"
-                    placeholder="Наприклад: C23"
+                    placeholder="Наприклад: B23"
                   />
                 ) : (
                   <div className="bg-tactical-dark bg-opacity-50 border border-tactical-green-800 rounded px-2 py-1 text-sm font-mono">
@@ -167,7 +167,7 @@ export const CellMapConfig: React.FC<CellMapConfigProps> = ({
                     value={mappings['summary.uniqueTargets'] || ''}
                     onChange={(e) => handleInputChange('summary.uniqueTargets', e.target.value)}
                     className="bg-tactical-dark border border-tactical-green-700 rounded px-2 py-1 text-sm font-mono"
-                    placeholder="Наприклад: C24"
+                    placeholder="Наприклад: B24"
                   />
                 ) : (
                   <div className="bg-tactical-dark bg-opacity-50 border border-tactical-green-800 rounded px-2 py-1 text-sm font-mono">

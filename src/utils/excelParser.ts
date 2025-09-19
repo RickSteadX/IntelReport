@@ -3,18 +3,18 @@ import type { ExcelData, StrikeSystem, ReconSystem, SummaryStatistics } from '..
 import { findIconForText } from './iconDictionary';
 
 // Default configuration for cell ranges
-const DEFAULT_STRIKE_RANGE = 'C4:D15'; // Default range for strike systems (name on left, numbers on right)
-const DEFAULT_RECON_RANGE = 'C18:C20'; // Default range for recon systems
+const DEFAULT_STRIKE_RANGE = 'B4:D15'; // Default range for strike systems (name on left, hit/destroyed on right)
+const DEFAULT_RECON_RANGE = 'B18:C20'; // Default range for recon systems (name on left, detected on right)
 const DEFAULT_SUMMARY_CELLS = {
-  totalFlights: 'C23',
-  uniqueTargets: 'C24',
+  totalFlights: 'B23',
+  uniqueTargets: 'B24',
   monthlyStats: {
     sheet: 'Monthly',
     range: 'A2:B13',
   },
   dateRange: {
-    start: 'C26',
-    end: 'C27',
+    start: 'B26',
+    end: 'B27',
   },
 };
 
@@ -221,10 +221,10 @@ const getSingleCellValue = (data: any[][], cellRef: string): any => {
 };
 
 /**
- * Parse a range to extract name/value pairs
- * Assumes names are in the left column and values are in the right column
+ * Parse a range to extract name/hit/destroyed values
+ * Assumes names are in the left column, hit values in middle column, and destroyed values in right column
  */
-const parseNameValuePairs = (data: any[][], range: string): { name: string; value: number }[] => {
+const parseStrikeSystemData = (data: any[][], range: string): { name: string; hit: number; destroyed: number }[] => {
   const [start, end] = range.split(':');
   
   // Extract column letters and row numbers
@@ -244,30 +244,88 @@ const parseNameValuePairs = (data: any[][], range: string): { name: string; valu
   const startColIndex = startColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
   const endColIndex = endColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
   
-  const pairs: { name: string; value: number }[] = [];
+  const systems: { name: string; hit: number; destroyed: number }[] = [];
   
   // Process each row in the range
   for (let row = startRow; row <= endRow; row++) {
-    // Get name from left column (startColIndex)
+    // Get name from left column
     const name = data[row]?.[startColIndex];
-    // Get value from right column (endColIndex)
-    const value = data[row]?.[endColIndex];
     
-    // Only add if name exists and is not empty
+    // Only process if name exists and is not empty
     if (name && String(name).trim() !== '') {
-      pairs.push({
+      // For strike systems, we expect 2 or 3 columns:
+      // Column 1: Name
+      // Column 2: Hit count
+      // Column 3: Destroyed count (optional, can be same as hit if not provided)
+      
+      const hitValue = data[row]?.[startColIndex + 1]; // Middle column
+      const destroyedValue = endColIndex > startColIndex + 1 ? 
+        data[row]?.[startColIndex + 2] : // Right column if it exists
+        hitValue; // Same as hit if only 2 columns
+      
+      systems.push({
         name: String(name),
-        value: Number(value) || 0
+        hit: Number(hitValue) || 0,
+        destroyed: Number(destroyedValue) || 0
       });
     }
   }
   
-  return pairs;
+  return systems;
+};
+
+/**
+ * Parse a range to extract name/detected values
+ * Assumes names are in the left column and detected values are in the right column
+ */
+const parseReconSystemData = (data: any[][], range: string): { name: string; detected: number }[] => {
+  const [start, end] = range.split(':');
+  
+  // Extract column letters and row numbers
+  const startColMatch = start.match(/[A-Z]+/);
+  const startRowMatch = start.match(/\d+/);
+  const endColMatch = end.match(/[A-Z]+/);
+  const endRowMatch = end.match(/\d+/);
+  
+  if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
+    return [];
+  }
+  
+  const startRow = parseInt(startRowMatch[0], 10) - 1;
+  const endRow = parseInt(endRowMatch[0], 10) - 1;
+  
+  // Convert column letters to indices
+  const startColIndex = startColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
+  const endColIndex = endColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
+  
+  const systems: { name: string; detected: number }[] = [];
+  
+  // Process each row in the range
+  for (let row = startRow; row <= endRow; row++) {
+    // Get name from left column
+    const name = data[row]?.[startColIndex];
+    
+    // Only process if name exists and is not empty
+    if (name && String(name).trim() !== '') {
+      // For recon systems, we expect 2 columns:
+      // Column 1: Name
+      // Column 2: Detected count
+      
+      const detectedValue = data[row]?.[startColIndex + 1]; // Right column
+      
+      systems.push({
+        name: String(name),
+        detected: Number(detectedValue) || 0
+      });
+    }
+  }
+  
+  return systems;
 };
 
 /**
  * Extract strike systems data from Excel using dynamic name detection
- * Names are on the left, numbers (hit/destroyed) are on the right
+ * Names are in the left column, hit counts in middle column, destroyed counts in right column
  */
 export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
   if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
@@ -276,23 +334,20 @@ export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
   
   const sheetData = excelData.data[excelData.selectedSheet];
   
-  // Parse the range to get name/value pairs
-  const pairs = parseNameValuePairs(sheetData, STRIKE_RANGE);
+  // Parse the range to get name/hit/destroyed data
+  const systems = parseStrikeSystemData(sheetData, STRIKE_RANGE);
   
-  // For strike systems, we need to split the value into hitCount and destroyedCount
-  // We'll assume the value represents hitCount and destroyedCount is 0 or needs to be calculated
-  // In a real implementation, you might have two columns for hit/destroyed
-  return pairs.map(pair => ({
-    name: pair.name,
-    icon: findIconForText(pair.name),
-    hitCount: pair.value,
-    destroyedCount: Math.floor(pair.value * 0.5) // Example: destroyed is 50% of hit
+  return systems.map(system => ({
+    name: system.name,
+    icon: findIconForText(system.name),
+    hitCount: system.hit,
+    destroyedCount: system.destroyed
   }));
 };
 
 /**
  * Extract reconnaissance systems data from Excel using dynamic name detection
- * Names are on the left, numbers (detected) are on the right
+ * Names are in the left column, detected counts in right column
  */
 export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
   if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
@@ -301,13 +356,13 @@ export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
   
   const sheetData = excelData.data[excelData.selectedSheet];
   
-  // Parse the range to get name/value pairs
-  const pairs = parseNameValuePairs(sheetData, RECON_RANGE);
+  // Parse the range to get name/detected data
+  const systems = parseReconSystemData(sheetData, RECON_RANGE);
   
-  return pairs.map(pair => ({
-    name: pair.name,
-    icon: findIconForText(pair.name),
-    detectedCount: pair.value
+  return systems.map(system => ({
+    name: system.name,
+    icon: findIconForText(system.name),
+    detectedCount: system.detected
   }));
 };
 
