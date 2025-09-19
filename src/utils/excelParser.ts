@@ -373,12 +373,10 @@ const getSingleCellValue = (data: any[][], cellRef: string): any => {
       };
     });
   };
-  });
-};
-
-/**
- * Extract reconnaissance systems data from Excel using the new format
- */
+  
+  /**
+   * Extract reconnaissance systems data from Excel using the new format
+   */
   export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
     if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
       return [];
@@ -408,12 +406,10 @@ const getSingleCellValue = (data: any[][], cellRef: string): any => {
       };
     });
   };
-  });
-};
-
-/**
- * Extract summary statistics from Excel using the new format
- */
+  
+  /**
+   * Extract summary statistics from Excel using the new format
+   */
 export const extractSummaryStatistics = (excelData: ExcelData): SummaryStatistics => {
   if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
     return {
