@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { ExcelData } from '../types';
+import type { ExcelData } from '../types';
 
 /**
  * Interface for cell range specification
