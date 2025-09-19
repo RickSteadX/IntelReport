@@ -2,48 +2,97 @@ import * as XLSX from 'xlsx';
 import type { ExcelData, StrikeSystem, ReconSystem, SummaryStatistics } from '../types';
 import { findIconForText } from './iconDictionary';
 
-// Default configuration for cell ranges
-const DEFAULT_STRIKE_RANGE = 'B4:D15'; // Default range for strike systems (name on left, hit/destroyed on right)
-const DEFAULT_RECON_RANGE = 'B18:C20'; // Default range for recon systems (name on left, detected on right)
+// Default configuration for cell references
+const DEFAULT_STRIKE_SYSTEMS = [
+  { name: 'Танки', icon: 'tank' },
+  { name: 'ББМ', icon: 'truck-military' },
+  { name: 'Артилерійські системи', icon: 'artillery' },
+  { name: 'РСЗВ', icon: 'rocket' },
+  { name: 'Засоби ППО', icon: 'shield' },
+  { name: 'Літаки', icon: 'plane' },
+  { name: 'Гелікоптери', icon: 'helicopter' },
+  { name: 'БПЛА', icon: 'drone' },
+  { name: 'Крилаті ракети', icon: 'missile' },
+  { name: 'Кораблі/катери', icon: 'ship' },
+  { name: 'Автомобілі та автoцистерни', icon: 'truck' },
+  { name: 'Спеціальна техніка', icon: 'wrench' },
+];
+
+const DEFAULT_RECON_SYSTEMS = [
+  { name: 'РЛС', icon: 'radar' },
+  { name: 'Засоби РЕБ', icon: 'radio' },
+  { name: 'Пускові установки', icon: 'rocket-launch' },
+];
+
 const DEFAULT_SUMMARY_CELLS = {
-  totalFlights: 'B23',
-  uniqueTargets: 'B24',
+  totalFlights: '',
+  uniqueTargets: '',
   monthlyStats: {
-    sheet: 'Monthly',
-    range: 'A2:B13',
+    sheet: '',
+    range: '',
   },
   dateRange: {
-    start: 'B26',
-    end: 'B27',
+    start: '',
+    end: '',
   },
 };
 
 // Store the current cell mappings
-let STRIKE_RANGE = DEFAULT_STRIKE_RANGE;
-let RECON_RANGE = DEFAULT_RECON_RANGE;
+let STRIKE_SYSTEMS: { name: string; icon: string; cellRange?: string }[] = [...DEFAULT_STRIKE_SYSTEMS];
+let RECON_SYSTEMS: { name: string; icon: string; cellRange?: string }[] = [...DEFAULT_RECON_SYSTEMS];
 let SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
 
 /**
- * Update cell mappings
+ * Update cell mappings with new format
+ * Format: [Text]/[Number]/[Number?] with cell ranges like "1A:C30"
  */
 export const updateCellMappings = (mappings: Record<string, string>) => {
-  // Update strike systems range
-  if (mappings['strike.range']) {
-    STRIKE_RANGE = mappings['strike.range'];
-  }
-  
-  // Update recon systems range
-  if (mappings['recon.range']) {
-    RECON_RANGE = mappings['recon.range'];
-  }
-  
-  // Update summary cells
-  if (mappings['summary.totalFlights']) SUMMARY_CELLS.totalFlights = mappings['summary.totalFlights'];
-  if (mappings['summary.uniqueTargets']) SUMMARY_CELLS.uniqueTargets = mappings['summary.uniqueTargets'];
-  if (mappings['summary.dateRangeStart']) SUMMARY_CELLS.dateRange.start = mappings['summary.dateRangeStart'];
-  if (mappings['summary.dateRangeEnd']) SUMMARY_CELLS.dateRange.end = mappings['summary.dateRangeEnd'];
-  if (mappings['summary.monthlyStatsSheet']) SUMMARY_CELLS.monthlyStats.sheet = mappings['summary.monthlyStatsSheet'];
-  if (mappings['summary.monthlyStatsRange']) SUMMARY_CELLS.monthlyStats.range = mappings['summary.monthlyStatsRange'];
+  // Update strike systems
+  Object.entries(mappings).forEach(([key, value]) => {
+    if (key.startsWith('strike.')) {
+      const systemName = key.replace('strike.', '');
+      const systemIndex = STRIKE_SYSTEMS.findIndex(s => s.name === systemName);
+      
+      if (systemIndex >= 0) {
+        STRIKE_SYSTEMS[systemIndex].cellRange = value.trim();
+      } else {
+        // Add new system
+        STRIKE_SYSTEMS.push({
+          name: systemName,
+          icon: findIconForText(systemName),
+          cellRange: value.trim()
+        });
+      }
+    }
+    
+    // Update recon systems
+    if (key.startsWith('recon.')) {
+      const systemName = key.replace('recon.', '');
+      const systemIndex = RECON_SYSTEMS.findIndex(s => s.name === systemName);
+      
+      if (systemIndex >= 0) {
+        RECON_SYSTEMS[systemIndex].cellRange = value.trim();
+      } else {
+        // Add new system
+        RECON_SYSTEMS.push({
+          name: systemName,
+          icon: findIconForText(systemName),
+          cellRange: value.trim()
+        });
+      }
+    }
+    
+    // Update summary cells
+    if (key.startsWith('summary.')) {
+      const field = key.replace('summary.', '');
+      if (field === 'totalFlights') SUMMARY_CELLS.totalFlights = value.trim();
+      if (field === 'uniqueTargets') SUMMARY_CELLS.uniqueTargets = value.trim();
+      if (field === 'dateRangeStart') SUMMARY_CELLS.dateRange.start = value.trim();
+      if (field === 'dateRangeEnd') SUMMARY_CELLS.dateRange.end = value.trim();
+      if (field === 'monthlyStatsSheet') SUMMARY_CELLS.monthlyStats.sheet = value.trim();
+      if (field === 'monthlyStatsRange') SUMMARY_CELLS.monthlyStats.range = value.trim();
+    }
+  });
 };
 
 /**
@@ -52,11 +101,15 @@ export const updateCellMappings = (mappings: Record<string, string>) => {
 export const getCurrentCellMappings = (): Record<string, string> => {
   const mappings: Record<string, string> = {};
   
-  // Strike systems range
-  mappings['strike.range'] = STRIKE_RANGE;
+  // Strike systems
+  STRIKE_SYSTEMS.forEach(system => {
+    mappings[`strike.${system.name}`] = system.cellRange || '';
+  });
   
-  // Recon systems range
-  mappings['recon.range'] = RECON_RANGE;
+  // Recon systems
+  RECON_SYSTEMS.forEach(system => {
+    mappings[`recon.${system.name}`] = system.cellRange || '';
+  });
   
   // Summary cells
   mappings['summary.totalFlights'] = SUMMARY_CELLS.totalFlights;
@@ -73,8 +126,8 @@ export const getCurrentCellMappings = (): Record<string, string> => {
  * Reset cell mappings to defaults
  */
 export const resetCellMappings = () => {
-  STRIKE_RANGE = DEFAULT_STRIKE_RANGE;
-  RECON_RANGE = DEFAULT_RECON_RANGE;
+  STRIKE_SYSTEMS = [...DEFAULT_STRIKE_SYSTEMS];
+  RECON_SYSTEMS = [...DEFAULT_RECON_SYSTEMS];
   SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
 };
 
@@ -170,6 +223,70 @@ const expandCellRange = (range: string): string[] => {
   return cells;
 };
 
+  /**
+   * Parse name/value pairs from a range where names are in the leftmost column
+   * and values are in the right columns
+   * @param sheetData The Excel sheet data as 2D array
+   * @param range The cell range to parse (e.g., &quot;A1:C30&quot;)
+   * @param valueColumns Number of value columns (1 for recon systems, 2 for strike systems)
+   * @returns Array of parsed name/value pairs
+   */
+  const parseNameValuePairs = (sheetData: any[][], range: string, valueColumns: number = 1): { name: string; values: number[] }[] => {
+    // Parse the range to get start and end positions
+    const [start, end] = range.includes(':') ? range.split(':') : [range, range];
+    
+    // Extract column letters and row numbers
+    const startColMatch = start.match(/[A-Z]+/);
+    const startRowMatch = start.match(/\d+/);
+    const endColMatch = end.match(/[A-Z]+/);
+    const endRowMatch = end.match(/\d+/);
+    
+    if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
+      return []; // Invalid range format
+    }
+    
+    const startCol = startColMatch[0];
+    const startRow = parseInt(startRowMatch[0], 10);
+    const endCol = endColMatch[0];
+    const endRow = parseInt(endRowMatch[0], 10);
+    
+    // Convert column letters to indices
+    const startColIndex = startCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
+    const endColIndex = endCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
+    
+    const results: { name: string; values: number[] }[] = [];
+    
+    // Process each row in the range
+    for (let row = startRow - 1; row < endRow; row++) {
+      // Get the name from the leftmost column
+      const name = sheetData[row]?.[startColIndex];
+      
+      // Skip empty rows or rows without a name
+      if (!name || name === '') {
+        continue;
+      }
+      
+      // Extract values from the specified number of columns to the right
+      const values: number[] = [];
+      for (let i = 0; i < valueColumns; i++) {
+        const valueColIndex = startColIndex + 1 + i;
+        if (valueColIndex <= endColIndex) {
+          const value = sheetData[row]?.[valueColIndex];
+          values.push(Number(value) || 0);
+        } else {
+          values.push(0); // Default to 0 if column doesn't exist
+        }
+      }
+      
+      results.push({
+        name: String(name),
+        values
+      });
+    }
+    
+    return results;
+  };
+
 /**
  * Get cell value from Excel data with support for ranges and combined ranges
  */
@@ -221,153 +338,81 @@ const getSingleCellValue = (data: any[][], cellRef: string): any => {
 };
 
 /**
- * Parse a range to extract name/hit/destroyed values
- * Assumes names are in the left column, hit values in middle column, and destroyed values in right column
+ * Extract strike systems data from Excel using the new format
+ * Format: [Text]/[Number]/[Number?] with cell ranges like "1A:C30"
  */
-const parseStrikeSystemData = (data: any[][], range: string): { name: string; hit: number; destroyed: number }[] => {
-  const [start, end] = range.split(':');
-  
-  // Extract column letters and row numbers
-  const startColMatch = start.match(/[A-Z]+/);
-  const startRowMatch = start.match(/\d+/);
-  const endColMatch = end.match(/[A-Z]+/);
-  const endRowMatch = end.match(/\d+/);
-  
-  if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
-    return [];
-  }
-  
-  const startRow = parseInt(startRowMatch[0], 10) - 1;
-  const endRow = parseInt(endRowMatch[0], 10) - 1;
-  
-  // Convert column letters to indices
-  const startColIndex = startColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-  const endColIndex = endColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-  
-  const systems: { name: string; hit: number; destroyed: number }[] = [];
-  
-  // Process each row in the range
-  for (let row = startRow; row <= endRow; row++) {
-    // Get name from left column
-    const name = data[row]?.[startColIndex];
-    
-    // Only process if name exists and is not empty
-    if (name && String(name).trim() !== '') {
-      // For strike systems, we expect 2 or 3 columns:
-      // Column 1: Name
-      // Column 2: Hit count
-      // Column 3: Destroyed count (optional, can be same as hit if not provided)
-      
-      const hitValue = data[row]?.[startColIndex + 1]; // Middle column
-      const destroyedValue = endColIndex > startColIndex + 1 ? 
-        data[row]?.[startColIndex + 2] : // Right column if it exists
-        hitValue; // Same as hit if only 2 columns
-      
-      systems.push({
-        name: String(name),
-        hit: Number(hitValue) || 0,
-        destroyed: Number(destroyedValue) || 0
-      });
+  export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
+    if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
+      return [];
     }
-  }
-  
-  return systems;
-};
-
-/**
- * Parse a range to extract name/detected values
- * Assumes names are in the left column and detected values are in the right column
- */
-const parseReconSystemData = (data: any[][], range: string): { name: string; detected: number }[] => {
-  const [start, end] = range.split(':');
-  
-  // Extract column letters and row numbers
-  const startColMatch = start.match(/[A-Z]+/);
-  const startRowMatch = start.match(/\d+/);
-  const endColMatch = end.match(/[A-Z]+/);
-  const endRowMatch = end.match(/\d+/);
-  
-  if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
-    return [];
-  }
-  
-  const startRow = parseInt(startRowMatch[0], 10) - 1;
-  const endRow = parseInt(endRowMatch[0], 10) - 1;
-  
-  // Convert column letters to indices
-  const startColIndex = startColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-  const endColIndex = endColMatch[0].split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-  
-  const systems: { name: string; detected: number }[] = [];
-  
-  // Process each row in the range
-  for (let row = startRow; row <= endRow; row++) {
-    // Get name from left column
-    const name = data[row]?.[startColIndex];
     
-    // Only process if name exists and is not empty
-    if (name && String(name).trim() !== '') {
-      // For recon systems, we expect 2 columns:
-      // Column 1: Name
-      // Column 2: Detected count
+    const sheetData = excelData.data[excelData.selectedSheet];
+    
+    return STRIKE_SYSTEMS.map(system => {
+      let hitCount = 0;
+      let destroyedCount = 0;
       
-      const detectedValue = data[row]?.[startColIndex + 1]; // Right column
+      if (system.cellRange) {
+        // Parse name/value pairs from the range
+        // For strike systems, we expect 2 value columns (hit count, destroyed count)
+        const parsedData = parseNameValuePairs(sheetData, system.cellRange, 2);
+        
+        // Find the matching system in the parsed data
+        const systemData = parsedData.find(item => item.name === system.name);
+        if (systemData) {
+          hitCount = systemData.values[0] || 0;
+          destroyedCount = systemData.values[1] || 0;
+        }
+      }
       
-      systems.push({
-        name: String(name),
-        detected: Number(detectedValue) || 0
-      });
+      return {
+        name: system.name,
+        icon: system.icon,
+        hitCount,
+        destroyedCount,
+      };
+    });
+  };
+  });
+};
+
+/**
+ * Extract reconnaissance systems data from Excel using the new format
+ */
+  export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
+    if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
+      return [];
     }
-  }
-  
-  return systems;
+    
+    const sheetData = excelData.data[excelData.selectedSheet];
+    
+    return RECON_SYSTEMS.map(system => {
+      let detectedCount = 0;
+      
+      if (system.cellRange) {
+        // Parse name/value pairs from the range
+        // For recon systems, we expect 1 value column (detected count)
+        const parsedData = parseNameValuePairs(sheetData, system.cellRange, 1);
+        
+        // Find the matching system in the parsed data
+        const systemData = parsedData.find(item => item.name === system.name);
+        if (systemData) {
+          detectedCount = systemData.values[0] || 0;
+        }
+      }
+      
+      return {
+        name: system.name,
+        icon: system.icon,
+        detectedCount,
+      };
+    });
+  };
+  });
 };
 
 /**
- * Extract strike systems data from Excel using dynamic name detection
- * Names are in the left column, hit counts in middle column, destroyed counts in right column
- */
-export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
-  if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
-    return [];
-  }
-  
-  const sheetData = excelData.data[excelData.selectedSheet];
-  
-  // Parse the range to get name/hit/destroyed data
-  const systems = parseStrikeSystemData(sheetData, STRIKE_RANGE);
-  
-  return systems.map(system => ({
-    name: system.name,
-    icon: findIconForText(system.name),
-    hitCount: system.hit,
-    destroyedCount: system.destroyed
-  }));
-};
-
-/**
- * Extract reconnaissance systems data from Excel using dynamic name detection
- * Names are in the left column, detected counts in right column
- */
-export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
-  if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
-    return [];
-  }
-  
-  const sheetData = excelData.data[excelData.selectedSheet];
-  
-  // Parse the range to get name/detected data
-  const systems = parseReconSystemData(sheetData, RECON_RANGE);
-  
-  return systems.map(system => ({
-    name: system.name,
-    icon: findIconForText(system.name),
-    detectedCount: system.detected
-  }));
-};
-
-/**
- * Extract summary statistics from Excel
+ * Extract summary statistics from Excel using the new format
  */
 export const extractSummaryStatistics = (excelData: ExcelData): SummaryStatistics => {
   if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
