@@ -9,13 +9,13 @@ interface ReconSystemsTableProps {
 
 export const ReconSystemsTable: React.FC<ReconSystemsTableProps> = ({ systems }) => {
   return (
-    <TacticalPanel title="Розвідувальні системи" className="h-full">
+    <TacticalPanel title="Розвідувальні системи" className="h-full" padding="normal">
       <div className="overflow-x-auto snap-scroll">
         <table className="w-full min-w-full">
           <thead>
             <tr className="border-b border-tactical-green-700">
-              <th className="py-2 px-3 text-left text-sm font-mono text-tactical-accent-yellow">Система</th>
-              <th className="py-2 px-3 text-center text-sm font-mono text-tactical-accent-yellow">Виявлено</th>
+              <th className="py-2 px-3 text-left text-sm font-mono text-tactical-accent-cyan">Система</th>
+              <th className="py-2 px-3 text-center text-sm font-mono text-tactical-accent-cyan">Виявлено</th>
             </tr>
           </thead>
           <tbody>
@@ -29,11 +29,11 @@ export const ReconSystemsTable: React.FC<ReconSystemsTableProps> = ({ systems })
               >
                 <td className="py-2 px-3 flex items-center">
                   <div className="mr-2 bg-tactical-green-800 p-1.5 rounded-full">
-                    <MilitaryIcon iconName={system.icon} size={16} className="text-tactical-accent-yellow" />
+                    <MilitaryIcon iconName={system.icon} text={system.name} size={16} className="text-tactical-accent-yellow" />
                   </div>
                   <span>{system.name}</span>
                 </td>
-                <td className="py-2 px-3 text-center font-mono text-tactical-accent-yellow">
+                <td className="py-2 px-3 text-center font-mono text-tactical-accent-purple">
                   {system.detectedCount}
                 </td>
               </tr>

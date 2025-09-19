@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { FileSpreadsheet, X, Shield } from 'lucide-react';
+import { FileSpreadsheet, Shield, Settings } from 'lucide-react';
 import { FileUpload } from './components/ui/FileUpload';
 import { TacticalPanel } from './components/ui/TacticalPanel';
 import { TacticalButton } from './components/ui/TacticalButton';
 import { SheetSelectionDialog } from './components/ui/SheetSelectionDialog';
-import { FullscreenToggle } from './components/ui/FullscreenToggle';
+import { SlidingMenu } from './components/ui/SlidingMenu';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { useExcelData } from './hooks/useExcelData';
+import { CellMapConfig } from './components/ui/CellMapConfig';
+import { getCurrentCellMappings, updateCellMappings } from './utils/excelParser';
 
 function App() {
   const {
@@ -20,6 +22,13 @@ function App() {
   } = useExcelData();
   
   const [showSheetDialog, setShowSheetDialog] = useState(false);
+  const [showCellMapConfig, setShowCellMapConfig] = useState(false);
+  const [cellMappings, setCellMappings] = useState<Record<string, string>>({});
+  
+  // Load cell mappings when component mounts
+  useEffect(() => {
+    setCellMappings(getCurrentCellMappings());
+  }, []);
   
   // Show sheet selection dialog when file is loaded and has multiple sheets
   useEffect(() => {
@@ -28,6 +37,12 @@ function App() {
     }
   }, [excelData.sheets]);
   
+  const handleCellMappingsSave = (mappings: Record<string, string>) => {
+    setCellMappings(mappings);
+    updateCellMappings(mappings);
+    setShowCellMapConfig(false);
+  };
+  
   return (
     <div className="min-h-screen bg-tactical-black bg-hex-pattern">
       <div className="container mx-auto px-4 py-8">
@@ -35,25 +50,21 @@ function App() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-mono font-bold text-tactical-accent-yellow mb-2">
-                Військова розвідка: аналіз даних
+                Розвіддонесення <br /> ВПС (тип С) РУБпАК
               </h1>
               <p className="text-gray-400">
                 Візуалізація даних розвідки з Excel файлів
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
-              <FullscreenToggle />
-              
-              {fileName && (
-                <TacticalButton
-                  icon={X}
-                  onClick={resetData}
-                  variant="danger"
-                >
-                  Скинути дані
-                </TacticalButton>
-              )}
+            <div>
+              <TacticalButton
+                icon={Settings}
+                onClick={() => setShowCellMapConfig(true)}
+                variant="secondary"
+              >
+                Налаштування комірок
+              </TacticalButton>
             </div>
           </div>
           
@@ -62,29 +73,14 @@ function App() {
               <div className="flex items-center">
                 <FileSpreadsheet className="mr-2 text-tactical-accent-yellow" size={20} />
                 <span className="font-mono">{fileName}</span>
-                {excelData.selectedSheet && (
-                  <span className="ml-2 text-sm text-gray-400">
-                    (Аркуш: {excelData.selectedSheet})
-                  </span>
-                )}
               </div>
-              
-              {excelData.sheets.length > 1 && (
-                <TacticalButton
-                  variant="secondary"
-                  onClick={() => setShowSheetDialog(true)}
-                  className="text-sm"
-                >
-                  Змінити аркуш
-                </TacticalButton>
-              )}
             </div>
           )}
         </header>
         
         <main>
           {!fileName ? (
-            <TacticalPanel className="max-w-2xl mx-auto">
+            <TacticalPanel className="max-w-2xl mx-auto" padding="large">
               <div className="text-center mb-6">
                 <Shield size={48} className="text-tactical-green-500 mx-auto mb-4" />
                 <h2 className="text-xl font-mono text-tactical-accent-yellow mb-2">
@@ -98,7 +94,7 @@ function App() {
               <FileUpload onFileSelected={processExcelFile} />
             </TacticalPanel>
           ) : (
-            <div className="tactical-border p-6 bg-tactical-dark bg-opacity-70 backdrop-blur-sm rounded-md">
+            <div className="dashboard-container tactical-border">
               {isLoading ? (
                 <div className="text-center py-12">
                   <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-tactical-accent-yellow border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
@@ -131,21 +127,31 @@ function App() {
             </div>
           )}
         </main>
-        
-        <footer className="mt-8 text-center text-sm text-gray-500">
-          <div className="flex items-center justify-center gap-2">
-            <Shield size={14} />
-            <span>Військова розвідка © {new Date().getFullYear()}</span>
-          </div>
-        </footer>
       </div>
       
+      {/* Sliding Menu */}
+      <SlidingMenu
+        fileName={fileName}
+        selectedSheet={excelData.selectedSheet}
+        onResetData={resetData}
+        onChangeSheet={() => setShowSheetDialog(true)}
+        hasMultipleSheets={excelData.sheets.length > 1}
+      />
+      
+      {/* Dialogs */}
       <SheetSelectionDialog
         open={showSheetDialog}
         onOpenChange={setShowSheetDialog}
         sheets={excelData.sheets}
         selectedSheet={excelData.selectedSheet}
         onSheetSelect={selectSheet}
+      />
+      
+      <CellMapConfig
+        cellMappings={cellMappings}
+        onSave={handleCellMappingsSave}
+        isOpen={showCellMapConfig}
+        onClose={() => setShowCellMapConfig(false)}
       />
     </div>
   );

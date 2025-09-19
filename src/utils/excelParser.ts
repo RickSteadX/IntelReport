@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx';
 import type { ExcelData, StrikeSystem, ReconSystem, SummaryStatistics, AssetCellReferences } from '../types';
+import { findIconForText } from './iconDictionary';
 
-// Configuration for cell references
-const STRIKE_SYSTEMS: AssetCellReferences[] = [
+// Default configuration for cell references
+const DEFAULT_STRIKE_SYSTEMS: AssetCellReferences[] = [
   { name: 'Танки', icon: 'tank', hitCell: 'C4', destroyedCell: 'D4' },
   { name: 'ББМ', icon: 'truck-military', hitCell: 'C5', destroyedCell: 'D5' },
   { name: 'Артилерійські системи', icon: 'artillery', hitCell: 'C6', destroyedCell: 'D6' },
@@ -17,13 +18,13 @@ const STRIKE_SYSTEMS: AssetCellReferences[] = [
   { name: 'Спеціальна техніка', icon: 'wrench', hitCell: 'C15', destroyedCell: 'D15' },
 ];
 
-const RECON_SYSTEMS: AssetCellReferences[] = [
+const DEFAULT_RECON_SYSTEMS: AssetCellReferences[] = [
   { name: 'РЛС', icon: 'radar', detectedCell: 'C18' },
   { name: 'Засоби РЕБ', icon: 'radio', detectedCell: 'C19' },
   { name: 'Пускові установки', icon: 'rocket-launch', detectedCell: 'C20' },
 ];
 
-const SUMMARY_CELLS = {
+const DEFAULT_SUMMARY_CELLS = {
   totalFlights: 'C23',
   uniqueTargets: 'C24',
   monthlyStats: {
@@ -34,6 +35,102 @@ const SUMMARY_CELLS = {
     start: 'C26',
     end: 'C27',
   },
+};
+
+// Store the current cell mappings
+let STRIKE_SYSTEMS = [...DEFAULT_STRIKE_SYSTEMS];
+let RECON_SYSTEMS = [...DEFAULT_RECON_SYSTEMS];
+let SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
+
+/**
+ * Update cell mappings
+ */
+export const updateCellMappings = (mappings: Record<string, string>) => {
+  // Update strike systems
+  Object.entries(mappings).forEach(([key, value]) => {
+    if (key.startsWith('strike.')) {
+      const systemName = key.replace('strike.', '');
+      const systemIndex = STRIKE_SYSTEMS.findIndex(s => s.name === systemName);
+      
+      if (systemIndex >= 0) {
+        const [hitCell, destroyedCell] = value.split(',');
+        STRIKE_SYSTEMS[systemIndex].hitCell = hitCell.trim();
+        STRIKE_SYSTEMS[systemIndex].destroyedCell = destroyedCell?.trim() || hitCell.trim();
+      } else {
+        // Add new system
+        STRIKE_SYSTEMS.push({
+          name: systemName,
+          icon: findIconForText(systemName),
+          hitCell: value.split(',')[0].trim(),
+          destroyedCell: value.split(',')[1]?.trim() || value.split(',')[0].trim()
+        });
+      }
+    }
+    
+    // Update recon systems
+    if (key.startsWith('recon.')) {
+      const systemName = key.replace('recon.', '');
+      const systemIndex = RECON_SYSTEMS.findIndex(s => s.name === systemName);
+      
+      if (systemIndex >= 0) {
+        RECON_SYSTEMS[systemIndex].detectedCell = value.trim();
+      } else {
+        // Add new system
+        RECON_SYSTEMS.push({
+          name: systemName,
+          icon: findIconForText(systemName),
+          detectedCell: value.trim()
+        });
+      }
+    }
+    
+    // Update summary cells
+    if (key.startsWith('summary.')) {
+      const field = key.replace('summary.', '');
+      if (field === 'totalFlights') SUMMARY_CELLS.totalFlights = value.trim();
+      if (field === 'uniqueTargets') SUMMARY_CELLS.uniqueTargets = value.trim();
+      if (field === 'dateRangeStart') SUMMARY_CELLS.dateRange.start = value.trim();
+      if (field === 'dateRangeEnd') SUMMARY_CELLS.dateRange.end = value.trim();
+      if (field === 'monthlyStatsSheet') SUMMARY_CELLS.monthlyStats.sheet = value.trim();
+      if (field === 'monthlyStatsRange') SUMMARY_CELLS.monthlyStats.range = value.trim();
+    }
+  });
+};
+
+/**
+ * Get current cell mappings as a flat object
+ */
+export const getCurrentCellMappings = (): Record<string, string> => {
+  const mappings: Record<string, string> = {};
+  
+  // Strike systems
+  STRIKE_SYSTEMS.forEach(system => {
+    mappings[`strike.${system.name}`] = `${system.hitCell}, ${system.destroyedCell}`;
+  });
+  
+  // Recon systems
+  RECON_SYSTEMS.forEach(system => {
+    mappings[`recon.${system.name}`] = system.detectedCell || '';
+  });
+  
+  // Summary cells
+  mappings['summary.totalFlights'] = SUMMARY_CELLS.totalFlights;
+  mappings['summary.uniqueTargets'] = SUMMARY_CELLS.uniqueTargets;
+  mappings['summary.dateRangeStart'] = SUMMARY_CELLS.dateRange.start;
+  mappings['summary.dateRangeEnd'] = SUMMARY_CELLS.dateRange.end;
+  mappings['summary.monthlyStatsSheet'] = SUMMARY_CELLS.monthlyStats.sheet;
+  mappings['summary.monthlyStatsRange'] = SUMMARY_CELLS.monthlyStats.range;
+  
+  return mappings;
+};
+
+/**
+ * Reset cell mappings to defaults
+ */
+export const resetCellMappings = () => {
+  STRIKE_SYSTEMS = [...DEFAULT_STRIKE_SYSTEMS];
+  RECON_SYSTEMS = [...DEFAULT_RECON_SYSTEMS];
+  SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
 };
 
 /**
@@ -76,9 +173,92 @@ export const parseExcelFile = async (file: File): Promise<ExcelData> => {
 };
 
 /**
- * Get cell value from Excel data
+ * Parse a cell reference range (e.g., "A1:C3")
+ * Returns an array of all cell references in the range
+ */
+const expandCellRange = (range: string): string[] => {
+  // Handle single cell
+  if (!range.includes(':')) {
+    return [range];
+  }
+  
+  const [start, end] = range.split(':');
+  
+  // Extract column letters and row numbers
+  const startColMatch = start.match(/[A-Z]+/);
+  const startRowMatch = start.match(/\d+/);
+  const endColMatch = end.match(/[A-Z]+/);
+  const endRowMatch = end.match(/\d+/);
+  
+  if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
+    return [range]; // Invalid range format, return as is
+  }
+  
+  const startCol = startColMatch[0];
+  const startRow = parseInt(startRowMatch[0], 10);
+  const endCol = endColMatch[0];
+  const endRow = parseInt(endRowMatch[0], 10);
+  
+  // Convert column letters to indices
+  const startColIndex = startCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0);
+  const endColIndex = endCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0);
+  
+  // Generate all cells in the range
+  const cells: string[] = [];
+  
+  for (let col = startColIndex; col <= endColIndex; col++) {
+    for (let row = startRow; row <= endRow; row++) {
+      // Convert column index back to letter
+      let colStr = '';
+      let tempCol = col;
+      
+      while (tempCol > 0) {
+        const remainder = (tempCol - 1) % 26;
+        colStr = String.fromCharCode(65 + remainder) + colStr;
+        tempCol = Math.floor((tempCol - 1) / 26);
+      }
+      
+      cells.push(`${colStr}${row}`);
+    }
+  }
+  
+  return cells;
+};
+
+/**
+ * Get cell value from Excel data with support for ranges and combined ranges
  */
 const getCellValue = (data: any[][], cellRef: string): any => {
+  // Handle combined ranges (e.g., "A1:B2+C3:D4")
+  if (cellRef.includes('+')) {
+    const ranges = cellRef.split('+');
+    let sum = 0;
+    
+    ranges.forEach(range => {
+      const cells = expandCellRange(range.trim());
+      cells.forEach(cell => {
+        sum += Number(getSingleCellValue(data, cell)) || 0;
+      });
+    });
+    
+    return sum;
+  }
+  
+  // Handle single range or single cell
+  const cells = expandCellRange(cellRef);
+  let sum = 0;
+  
+  cells.forEach(cell => {
+    sum += Number(getSingleCellValue(data, cell)) || 0;
+  });
+  
+  return sum;
+};
+
+/**
+ * Get value from a single cell
+ */
+const getSingleCellValue = (data: any[][], cellRef: string): any => {
   const colMatch = cellRef.match(/[A-Z]+/);
   const rowMatch = cellRef.match(/\d+/);
   
@@ -149,12 +329,25 @@ export const extractSummaryStatistics = (excelData: ExcelData): SummaryStatistic
   const monthlyStats: Record<string, number> = {};
   if (excelData.data[SUMMARY_CELLS.monthlyStats.sheet]) {
     const monthlySheetData = excelData.data[SUMMARY_CELLS.monthlyStats.sheet];
-    // Process the range A2:B13 for monthly data
-    for (let i = 1; i <= 12; i++) {
-      const month = monthlySheetData[i]?.[0];
-      const value = monthlySheetData[i]?.[1];
-      if (month && value !== undefined) {
-        monthlyStats[month] = Number(value);
+    
+    // Parse the range
+    const range = SUMMARY_CELLS.monthlyStats.range;
+    const [start, end] = range.split(':');
+    
+    const startColMatch = start.match(/[A-Z]+/);
+    const startRowMatch = start.match(/\d+/);
+    const endRowMatch = end.match(/\d+/);
+    
+    if (startColMatch && startRowMatch && endRowMatch) {
+      const startRow = parseInt(startRowMatch[0], 10) - 1;
+      const endRow = parseInt(endRowMatch[0], 10) - 1;
+      
+      for (let i = startRow; i <= endRow; i++) {
+        const month = monthlySheetData[i]?.[0];
+        const value = monthlySheetData[i]?.[1];
+        if (month && value !== undefined) {
+          monthlyStats[month] = Number(value);
+        }
       }
     }
   }

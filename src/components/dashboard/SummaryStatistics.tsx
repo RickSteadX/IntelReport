@@ -16,16 +16,16 @@ export const SummaryStatistics: React.FC<SummaryStatisticsProps> = ({ statistics
     .slice(0, 3);
   
   return (
-    <TacticalPanel title="Зведена статистика" className="h-full">
+    <TacticalPanel title="Зведена статистика" className="h-full" padding="normal">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-tactical-dark bg-opacity-50 p-3 rounded-md border border-tactical-green-800">
           <div className="flex items-center mb-2">
             <div className="mr-2 bg-tactical-green-800 p-1.5 rounded-full">
-              <Plane size={16} className="text-tactical-accent-yellow" />
+              <Plane size={16} className="text-tactical-accent-cyan" />
             </div>
             <span className="text-sm text-gray-300">Всього вильотів</span>
           </div>
-          <div className="font-mono text-2xl gradient-text font-bold">
+          <div className="font-mono text-2xl gradient-text-blue font-bold">
             {totalFlights}
           </div>
         </div>
@@ -33,11 +33,11 @@ export const SummaryStatistics: React.FC<SummaryStatisticsProps> = ({ statistics
         <div className="bg-tactical-dark bg-opacity-50 p-3 rounded-md border border-tactical-green-800">
           <div className="flex items-center mb-2">
             <div className="mr-2 bg-tactical-green-800 p-1.5 rounded-full">
-              <Target size={16} className="text-tactical-accent-yellow" />
+              <Target size={16} className="text-tactical-accent-cyan" />
             </div>
             <span className="text-sm text-gray-300">Унікальних цілей</span>
           </div>
-          <div className="font-mono text-2xl gradient-text font-bold">
+          <div className="font-mono text-2xl gradient-text-blue font-bold">
             {uniqueTargets}
           </div>
         </div>
@@ -45,7 +45,7 @@ export const SummaryStatistics: React.FC<SummaryStatisticsProps> = ({ statistics
         <div className="bg-tactical-dark bg-opacity-50 p-3 rounded-md border border-tactical-green-800">
           <div className="flex items-center mb-2">
             <div className="mr-2 bg-tactical-green-800 p-1.5 rounded-full">
-              <Calendar size={16} className="text-tactical-accent-yellow" />
+              <Calendar size={16} className="text-tactical-accent-cyan" />
             </div>
             <span className="text-sm text-gray-300">Період розвідки</span>
           </div>
@@ -65,7 +65,7 @@ export const SummaryStatistics: React.FC<SummaryStatisticsProps> = ({ statistics
                 className="bg-tactical-dark bg-opacity-50 p-2 rounded-md border border-tactical-green-800 text-center"
               >
                 <div className="text-xs text-gray-400">{month}</div>
-                <div className="font-mono text-lg text-tactical-accent-red">{count}</div>
+                <div className="font-mono text-lg text-tactical-accent-purple">{count}</div>
               </div>
             ))}
           </div>

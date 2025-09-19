@@ -63,16 +63,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ excelData }) => {
       <div className="lg:col-span-1">
         <ReconSystemsTable systems={reconSystems} />
       </div>
-      
-      {/* Unit badge placeholder - commented out as per requirements */}
-      {/* 
-      <div className="lg:col-span-3 flex justify-center py-4">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
-          <ShieldCheck size={16} className="text-tactical-green-500" />
-          <span>Військова частина А0000</span>
-        </div>
-      </div>
-      */}
     </div>
   );
 };
