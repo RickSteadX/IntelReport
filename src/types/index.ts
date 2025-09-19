@@ -35,14 +35,6 @@ export interface CellReference {
   cell: string;
 }
 
-export interface AssetCellReferences {
-  name: string;
-  icon: string;
-  hitCell?: string;
-  destroyedCell?: string;
-  detectedCell?: string;
-}
-
 // UI state types
 export interface AppState {
   isFullscreen: boolean;
