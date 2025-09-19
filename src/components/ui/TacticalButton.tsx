@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 interface TacticalButtonProps {
   children: React.ReactNode;
   icon?: LucideIcon;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   variant?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
   className?: string;

@@ -13,6 +13,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept = '.xlsx,.xls',
   maxSize = 10, // 10MB default
 }) => {
+  
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -70,8 +71,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     fileInput?.click();
   }, []);
   
-  // Custom handler for the button to fix TypeScript error
-  const handleButtonClickWithEvent = useCallback(() => {
+  // Custom handler for the button to prevent event bubbling
+  const handleButtonClickWithEvent = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation(); // Prevent event from bubbling to the container
     handleButtonClick();
   }, [handleButtonClick]);
   

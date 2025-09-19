@@ -13,6 +13,7 @@ export const useExcelData = () => {
   const [fileName, setFileName] = useState<string | null>(null);
   
   const processExcelFile = useCallback(async (file: File) => {
+    
     setIsLoading(true);
     setError(null);
     
