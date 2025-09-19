@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileSpreadsheet, Shield, Settings } from 'lucide-react';
+import { FileSpreadsheet, Shield } from 'lucide-react';
 import { FileUpload } from './components/ui/FileUpload';
 import { TacticalPanel } from './components/ui/TacticalPanel';
 import { TacticalButton } from './components/ui/TacticalButton';
@@ -7,7 +7,7 @@ import { SheetSelectionDialog } from './components/ui/SheetSelectionDialog';
 import { SlidingMenu } from './components/ui/SlidingMenu';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { useExcelData } from './hooks/useExcelData';
-import { CellMapConfig } from './components/ui/CellMapConfig';
+import { CellMapManager } from './components/ui/CellMapManager';
 import { getCurrentCellMappings, updateCellMappings } from './utils/excelParser';
 
 function App() {
@@ -22,7 +22,7 @@ function App() {
   } = useExcelData();
   
   const [showSheetDialog, setShowSheetDialog] = useState(false);
-  const [showCellMapConfig, setShowCellMapConfig] = useState(false);
+  const [showCellMapManager, setShowCellMapManager] = useState(false);
   const [cellMappings, setCellMappings] = useState<Record<string, string>>({});
   
   // Load cell mappings when component mounts
@@ -40,7 +40,7 @@ function App() {
   const handleCellMappingsSave = (mappings: Record<string, string>) => {
     setCellMappings(mappings);
     updateCellMappings(mappings);
-    setShowCellMapConfig(false);
+    setShowCellMapManager(false);
   };
   
   return (
@@ -55,16 +55,6 @@ function App() {
               <p className="text-gray-400">
                 Візуалізація даних розвідки з Excel файлів
               </p>
-            </div>
-            
-            <div>
-              <TacticalButton
-                icon={Settings}
-                onClick={() => setShowCellMapConfig(true)}
-                variant="secondary"
-              >
-                Налаштування комірок
-              </TacticalButton>
             </div>
           </div>
           
@@ -136,6 +126,7 @@ function App() {
         onResetData={resetData}
         onChangeSheet={() => setShowSheetDialog(true)}
         hasMultipleSheets={excelData.sheets.length > 1}
+        onOpenCellSettings={() => setShowCellMapManager(true)}
       />
       
       {/* Dialogs */}
@@ -147,11 +138,10 @@ function App() {
         onSheetSelect={selectSheet}
       />
       
-      <CellMapConfig
-        cellMappings={cellMappings}
+      <CellMapManager
+        isOpen={showCellMapManager}
+        onClose={() => setShowCellMapManager(false)}
         onSave={handleCellMappingsSave}
-        isOpen={showCellMapConfig}
-        onClose={() => setShowCellMapConfig(false)}
       />
     </div>
   );

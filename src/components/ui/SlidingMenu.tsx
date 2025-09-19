@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Shield, Settings } from 'lucide-react';
 import { FullscreenToggle } from './FullscreenToggle';
 import { TacticalButton } from './TacticalButton';
+import { CellMappingComponent } from './CellMappingComponent';
 
 interface SlidingMenuProps {
   fileName: string | null;
@@ -9,6 +10,7 @@ interface SlidingMenuProps {
   onResetData: () => void;
   onChangeSheet: () => void;
   hasMultipleSheets: boolean;
+  onOpenCellSettings: () => void;
   children?: React.ReactNode;
 }
 
@@ -18,6 +20,7 @@ export const SlidingMenu: React.FC<SlidingMenuProps> = ({
   onResetData,
   onChangeSheet,
   hasMultipleSheets,
+  onOpenCellSettings,
   children
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +70,15 @@ export const SlidingMenu: React.FC<SlidingMenuProps> = ({
                       Змінити аркуш
                     </TacticalButton>
                   )}
+                  
+                  <TacticalButton
+                    icon={Settings}
+                    onClick={onOpenCellSettings}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    Налаштування комірок
+                  </TacticalButton>
                 </>
               )}
             </div>
@@ -80,7 +92,9 @@ export const SlidingMenu: React.FC<SlidingMenuProps> = ({
                 <p className="text-sm font-mono">{selectedSheet}</p>
               </div>
             )}
-
+            
+            {fileName && <CellMappingComponent />}
+            
             {children}
           </div>
 

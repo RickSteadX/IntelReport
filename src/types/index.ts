@@ -38,9 +38,7 @@ export interface CellReference {
 export interface AssetCellReferences {
   name: string;
   icon: string;
-  hitCell?: string;
-  destroyedCell?: string;
-  detectedCell?: string;
+  cellRange?: string;
 }
 
 // UI state types
