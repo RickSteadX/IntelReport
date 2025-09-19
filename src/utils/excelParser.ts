@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { ExcelData, StrikeSystem, ReconSystem, SummaryStatistics } from '../types';
 import { findIconForText } from './iconDictionary';
+import { CellMapping, CellMappingFactory, TableMapping } from './cellMapping';
 
 // Default configuration for cell references
 const DEFAULT_STRIKE_SYSTEMS = [
@@ -38,8 +39,28 @@ const DEFAULT_SUMMARY_CELLS = {
 };
 
 // Store the current cell mappings
-let STRIKE_SYSTEMS: { name: string; icon: string; cellRange?: string }[] = [...DEFAULT_STRIKE_SYSTEMS];
-let RECON_SYSTEMS: { name: string; icon: string; cellRange?: string }[] = [...DEFAULT_RECON_SYSTEMS];
+let strikeSystemsTableMapping = new TableMapping();
+let reconSystemsTableMapping = new TableMapping();
+
+// Initialize default mappings
+DEFAULT_STRIKE_SYSTEMS.forEach(system => {
+  const mapping = CellMappingFactory.createStrikeSystemMapping(
+    system.name,
+    '', // Empty range by default
+    system.icon
+  );
+  strikeSystemsTableMapping.addMapping(mapping);
+});
+
+DEFAULT_RECON_SYSTEMS.forEach(system => {
+  const mapping = CellMappingFactory.createReconSystemMapping(
+    system.name,
+    '', // Empty range by default
+    system.icon
+  );
+  reconSystemsTableMapping.addMapping(mapping);
+});
+
 let SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
 
 /**
@@ -51,34 +72,62 @@ export const updateCellMappings = (mappings: Record<string, string>) => {
   Object.entries(mappings).forEach(([key, value]) => {
     if (key.startsWith('strike.')) {
       const systemName = key.replace('strike.', '');
-      const systemIndex = STRIKE_SYSTEMS.findIndex(s => s.name === systemName);
+      let mapping = strikeSystemsTableMapping.findMapping(systemName);
       
-      if (systemIndex >= 0) {
-        STRIKE_SYSTEMS[systemIndex].cellRange = value.trim();
+      if (mapping) {
+        // Update existing mapping
+        const newMapping = CellMappingFactory.createStrikeSystemMapping(
+          systemName,
+          value.trim(),
+          mapping.getIcon()
+        );
+        
+        // Replace the mapping in the table
+        const updatedMappings = strikeSystemsTableMapping.getMappings().map(m => 
+          m.getName() === systemName ? newMapping : m
+        );
+        
+        strikeSystemsTableMapping = new TableMapping();
+        updatedMappings.forEach(m => strikeSystemsTableMapping.addMapping(m));
       } else {
         // Add new system
-        STRIKE_SYSTEMS.push({
-          name: systemName,
-          icon: findIconForText(systemName),
-          cellRange: value.trim()
-        });
+        const newMapping = CellMappingFactory.createStrikeSystemMapping(
+          systemName,
+          value.trim(),
+          findIconForText(systemName)
+        );
+        strikeSystemsTableMapping.addMapping(newMapping);
       }
     }
     
     // Update recon systems
     if (key.startsWith('recon.')) {
       const systemName = key.replace('recon.', '');
-      const systemIndex = RECON_SYSTEMS.findIndex(s => s.name === systemName);
+      let mapping = reconSystemsTableMapping.findMapping(systemName);
       
-      if (systemIndex >= 0) {
-        RECON_SYSTEMS[systemIndex].cellRange = value.trim();
+      if (mapping) {
+        // Update existing mapping
+        const newMapping = CellMappingFactory.createReconSystemMapping(
+          systemName,
+          value.trim(),
+          mapping.getIcon()
+        );
+        
+        // Replace the mapping in the table
+        const updatedMappings = reconSystemsTableMapping.getMappings().map(m => 
+          m.getName() === systemName ? newMapping : m
+        );
+        
+        reconSystemsTableMapping = new TableMapping();
+        updatedMappings.forEach(m => reconSystemsTableMapping.addMapping(m));
       } else {
         // Add new system
-        RECON_SYSTEMS.push({
-          name: systemName,
-          icon: findIconForText(systemName),
-          cellRange: value.trim()
-        });
+        const newMapping = CellMappingFactory.createReconSystemMapping(
+          systemName,
+          value.trim(),
+          findIconForText(systemName)
+        );
+        reconSystemsTableMapping.addMapping(newMapping);
       }
     }
     
@@ -102,13 +151,25 @@ export const getCurrentCellMappings = (): Record<string, string> => {
   const mappings: Record<string, string> = {};
   
   // Strike systems
-  STRIKE_SYSTEMS.forEach(system => {
-    mappings[`strike.${system.name}`] = system.cellRange || '';
+  strikeSystemsTableMapping.getMappings().forEach(mapping => {
+    const ranges = mapping.getRanges();
+    if (ranges.length > 0) {
+      const rangeStr = `${ranges[0].start}:${ranges[0].end}`;
+      mappings[`strike.${mapping.getName()}`] = rangeStr;
+    } else {
+      mappings[`strike.${mapping.getName()}`] = '';
+    }
   });
   
   // Recon systems
-  RECON_SYSTEMS.forEach(system => {
-    mappings[`recon.${system.name}`] = system.cellRange || '';
+  reconSystemsTableMapping.getMappings().forEach(mapping => {
+    const ranges = mapping.getRanges();
+    if (ranges.length > 0) {
+      const rangeStr = `${ranges[0].start}:${ranges[0].end}`;
+      mappings[`recon.${mapping.getName()}`] = rangeStr;
+    } else {
+      mappings[`recon.${mapping.getName()}`] = '';
+    }
   });
   
   // Summary cells
@@ -126,8 +187,29 @@ export const getCurrentCellMappings = (): Record<string, string> => {
  * Reset cell mappings to defaults
  */
 export const resetCellMappings = () => {
-  STRIKE_SYSTEMS = [...DEFAULT_STRIKE_SYSTEMS];
-  RECON_SYSTEMS = [...DEFAULT_RECON_SYSTEMS];
+  // Reset strike systems
+  strikeSystemsTableMapping = new TableMapping();
+  DEFAULT_STRIKE_SYSTEMS.forEach(system => {
+    const mapping = CellMappingFactory.createStrikeSystemMapping(
+      system.name,
+      '', // Empty range by default
+      system.icon
+    );
+    strikeSystemsTableMapping.addMapping(mapping);
+  });
+  
+  // Reset recon systems
+  reconSystemsTableMapping = new TableMapping();
+  DEFAULT_RECON_SYSTEMS.forEach(system => {
+    const mapping = CellMappingFactory.createReconSystemMapping(
+      system.name,
+      '', // Empty range by default
+      system.icon
+    );
+    reconSystemsTableMapping.addMapping(mapping);
+  });
+  
+  // Reset summary cells
   SUMMARY_CELLS = { ...DEFAULT_SUMMARY_CELLS };
 };
 
@@ -223,70 +305,6 @@ const expandCellRange = (range: string): string[] => {
   return cells;
 };
 
-  /**
-   * Parse name/value pairs from a range where names are in the leftmost column
-   * and values are in the right columns
-   * @param sheetData The Excel sheet data as 2D array
-   * @param range The cell range to parse (e.g., &quot;A1:C30&quot;)
-   * @param valueColumns Number of value columns (1 for recon systems, 2 for strike systems)
-   * @returns Array of parsed name/value pairs
-   */
-  const parseNameValuePairs = (sheetData: any[][], range: string, valueColumns: number = 1): { name: string; values: number[] }[] => {
-    // Parse the range to get start and end positions
-    const [start, end] = range.includes(':') ? range.split(':') : [range, range];
-    
-    // Extract column letters and row numbers
-    const startColMatch = start.match(/[A-Z]+/);
-    const startRowMatch = start.match(/\d+/);
-    const endColMatch = end.match(/[A-Z]+/);
-    const endRowMatch = end.match(/\d+/);
-    
-    if (!startColMatch || !startRowMatch || !endColMatch || !endRowMatch) {
-      return []; // Invalid range format
-    }
-    
-    const startCol = startColMatch[0];
-    const startRow = parseInt(startRowMatch[0], 10);
-    const endCol = endColMatch[0];
-    const endRow = parseInt(endRowMatch[0], 10);
-    
-    // Convert column letters to indices
-    const startColIndex = startCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-    const endColIndex = endCol.split('').reduce((acc, char) => acc * 26 + char.charCodeAt(0) - 64, 0) - 1;
-    
-    const results: { name: string; values: number[] }[] = [];
-    
-    // Process each row in the range
-    for (let row = startRow - 1; row < endRow; row++) {
-      // Get the name from the leftmost column
-      const name = sheetData[row]?.[startColIndex];
-      
-      // Skip empty rows or rows without a name
-      if (!name || name === '') {
-        continue;
-      }
-      
-      // Extract values from the specified number of columns to the right
-      const values: number[] = [];
-      for (let i = 0; i < valueColumns; i++) {
-        const valueColIndex = startColIndex + 1 + i;
-        if (valueColIndex <= endColIndex) {
-          const value = sheetData[row]?.[valueColIndex];
-          values.push(Number(value) || 0);
-        } else {
-          values.push(0); // Default to 0 if column doesn't exist
-        }
-      }
-      
-      results.push({
-        name: String(name),
-        values
-      });
-    }
-    
-    return results;
-  };
-
 /**
  * Get cell value from Excel data with support for ranges and combined ranges
  */
@@ -338,78 +356,53 @@ const getSingleCellValue = (data: any[][], cellRef: string): any => {
 };
 
 /**
- * Extract strike systems data from Excel using the new format
- * Format: [Text]/[Number]/[Number?] with cell ranges like "1A:C30"
+ * Extract strike systems data from Excel using the cell mapping components
  */
-  export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
-    if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
-      return [];
-    }
-    
-    const sheetData = excelData.data[excelData.selectedSheet];
-    
-    return STRIKE_SYSTEMS.map(system => {
-      let hitCount = 0;
-      let destroyedCount = 0;
-      
-      if (system.cellRange) {
-        // Parse name/value pairs from the range
-        // For strike systems, we expect 2 value columns (hit count, destroyed count)
-        const parsedData = parseNameValuePairs(sheetData, system.cellRange, 2);
-        
-        // Find the matching system in the parsed data
-        const systemData = parsedData.find(item => item.name === system.name);
-        if (systemData) {
-          hitCount = systemData.values[0] || 0;
-          destroyedCount = systemData.values[1] || 0;
-        }
-      }
-      
-      return {
-        name: system.name,
-        icon: system.icon,
-        hitCount,
-        destroyedCount,
-      };
-    });
-  };
+export const extractStrikeSystems = (excelData: ExcelData): StrikeSystem[] => {
+  if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
+    return [];
+  }
   
-  /**
-   * Extract reconnaissance systems data from Excel using the new format
-   */
-  export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
-    if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
-      return [];
-    }
-    
-    const sheetData = excelData.data[excelData.selectedSheet];
-    
-    return RECON_SYSTEMS.map(system => {
-      let detectedCount = 0;
-      
-      if (system.cellRange) {
-        // Parse name/value pairs from the range
-        // For recon systems, we expect 1 value column (detected count)
-        const parsedData = parseNameValuePairs(sheetData, system.cellRange, 1);
-        
-        // Find the matching system in the parsed data
-        const systemData = parsedData.find(item => item.name === system.name);
-        if (systemData) {
-          detectedCount = systemData.values[0] || 0;
-        }
-      }
-      
-      return {
-        name: system.name,
-        icon: system.icon,
-        detectedCount,
-      };
-    });
-  };
+  const mappings = strikeSystemsTableMapping.getMappings();
   
-  /**
-   * Extract summary statistics from Excel using the new format
-   */
+  return mappings.map(mapping => {
+    const extractedData = mapping.extractData(excelData);
+    const systemData = extractedData.find(item => item.name === mapping.getName());
+    
+    return {
+      name: mapping.getName(),
+      icon: mapping.getIcon() || 'default',
+      hitCount: systemData?.values[0] || 0,
+      destroyedCount: systemData?.values[1] || 0,
+    };
+  });
+};
+
+/**
+ * Extract reconnaissance systems data from Excel using the cell mapping components
+ */
+export const extractReconSystems = (excelData: ExcelData): ReconSystem[] => {
+  if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
+    return [];
+  }
+  
+  const mappings = reconSystemsTableMapping.getMappings();
+  
+  return mappings.map(mapping => {
+    const extractedData = mapping.extractData(excelData);
+    const systemData = extractedData.find(item => item.name === mapping.getName());
+    
+    return {
+      name: mapping.getName(),
+      icon: mapping.getIcon() || 'default',
+      detectedCount: systemData?.values[0] || 0,
+    };
+  });
+};
+
+/**
+ * Extract summary statistics from Excel using the new format
+ */
 export const extractSummaryStatistics = (excelData: ExcelData): SummaryStatistics => {
   if (!excelData.selectedSheet || !excelData.data[excelData.selectedSheet]) {
     return {
