@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import * as Select from '@radix-ui/react-select';
-import { X, ChevronDown, Check, FileSpreadsheet } from 'lucide-react';
+import { X, Check, FileSpreadsheet, Search } from 'lucide-react';
 import { TacticalButton } from './TacticalButton';
 
 interface SheetSelectionDialogProps {
@@ -19,66 +18,108 @@ export const SheetSelectionDialog: React.FC<SheetSelectionDialogProps> = ({
   selectedSheet,
   onSheetSelect,
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredSheets, setFilteredSheets] = useState<string[]>(sheets);
+  
+  // Reset search when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSearchTerm('');
+      setFilteredSheets(sheets);
+    }
+  }, [open, sheets]);
+  
+  // Filter sheets when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredSheets(sheets);
+    } else {
+      const filtered = sheets.filter(sheet => 
+        sheet.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredSheets(filtered);
+    }
+  }, [searchTerm, sheets]);
+  
+  // Organize sheets into columns (3 columns with max 11 sheets per column)
+  const organizeIntoColumns = (sheets: string[]) => {
+    const columns: string[][] = [[], [], []];
+    const itemsPerColumn = Math.ceil(sheets.length / 3);
+    
+    sheets.forEach((sheet, index) => {
+      const columnIndex = Math.floor(index / itemsPerColumn);
+      if (columnIndex < 3) {
+        columns[columnIndex].push(sheet);
+      } else {
+        // Fallback for any overflow
+        columns[2].push(sheet);
+      }
+    });
+    
+    return columns;
+  };
+  
+  const sheetColumns = organizeIntoColumns(filteredSheets);
+  
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-40" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md tactical-glassmorphism tactical-border p-6 z-50">
+        <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-md z-40" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl tactical-glassmorphism tactical-border p-6 z-50 max-h-[90vh] overflow-hidden flex flex-col">
           <Dialog.Title className="text-xl font-mono text-tactical-accent-yellow mb-4 flex items-center">
             <FileSpreadsheet className="mr-2" size={20} />
             Вибір аркуша Excel
           </Dialog.Title>
           
-          <Dialog.Description className="text-gray-300 mb-6">
+          <Dialog.Description className="text-gray-300 mb-4">
             Виберіть аркуш Excel для аналізу даних розвідки.
           </Dialog.Description>
           
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Аркуш з даними
-            </label>
-            
-            <Select.Root
-              value={selectedSheet || undefined}
-              onValueChange={onSheetSelect}
-            >
-              <Select.Trigger className="w-full flex items-center justify-between bg-tactical-dark border border-tactical-green-700 rounded px-4 py-2 text-left">
-                <Select.Value placeholder="Виберіть аркуш" />
-                <Select.Icon>
-                  <ChevronDown size={18} />
-                </Select.Icon>
-              </Select.Trigger>
-              
-              <Select.Portal>
-                <Select.Content className="tactical-glassmorphism border border-tactical-green-700 rounded-md overflow-hidden z-50">
-                  <Select.ScrollUpButton className="flex items-center justify-center h-6 bg-tactical-dark cursor-default">
-                    <ChevronDown className="transform rotate-180" />
-                  </Select.ScrollUpButton>
-                  
-                  <Select.Viewport className="p-1">
-                    {sheets.map((sheet) => (
-                      <Select.Item
-                        key={sheet}
-                        value={sheet}
-                        className="relative flex items-center px-8 py-2 rounded-sm text-sm data-[highlighted]:bg-tactical-green-800 outline-none cursor-pointer"
-                      >
-                        <Select.ItemText>{sheet}</Select.ItemText>
-                        <Select.ItemIndicator className="absolute left-2 inline-flex items-center">
-                          <Check size={16} />
-                        </Select.ItemIndicator>
-                      </Select.Item>
-                    ))}
-                  </Select.Viewport>
-                  
-                  <Select.ScrollDownButton className="flex items-center justify-center h-6 bg-tactical-dark cursor-default">
-                    <ChevronDown />
-                  </Select.ScrollDownButton>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
+          {/* Search box */}
+          <div className="relative mb-6">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Пошук аркушів..."
+              className="w-full pl-10 pr-4 py-2 bg-tactical-dark border border-tactical-green-700 rounded text-white focus:outline-none focus:ring-1 focus:ring-tactical-accent-yellow"
+            />
           </div>
           
-          <div className="flex justify-end gap-3">
+          {/* Sheet selection grid */}
+          <div className="flex-grow overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {sheetColumns.map((column, colIndex) => (
+                <div key={colIndex} className="space-y-2">
+                  {column.map((sheet) => (
+                    <button
+                      key={sheet}
+                      onClick={() => onSheetSelect(sheet)}
+                      className={`w-full text-left p-3 rounded-md flex items-center justify-between transition-colors ${
+                        selectedSheet === sheet
+                          ? 'bg-tactical-green-700 text-white'
+                          : 'bg-tactical-dark hover:bg-tactical-green-900 text-gray-200'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{sheet}</span>
+                      {selectedSheet === sheet && <Check size={16} />}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+            
+            {filteredSheets.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                Аркушів не знайдено
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-tactical-green-700">
             <TacticalButton
               variant="secondary"
               onClick={() => onOpenChange(false)}

@@ -11,12 +11,17 @@ import {
   Radar,
   type LucideProps
 } from 'lucide-react';
+import { findIconForText } from '../../utils/iconDictionary';
 
 interface MilitaryIconProps extends LucideProps {
   iconName: string;
+  text?: string; // Optional text to find icon based on content
 }
 
-export const MilitaryIcon: React.FC<MilitaryIconProps> = ({ iconName, ...props }) => {
+export const MilitaryIcon: React.FC<MilitaryIconProps> = ({ iconName, text, ...props }) => {
+  // If text is provided, try to find an icon based on the text
+  const finalIconName = text ? findIconForText(text) : iconName;
+  
   // Map icon names to Lucide components
   const getIcon = (name: string) => {
     switch (name) {
@@ -53,5 +58,5 @@ export const MilitaryIcon: React.FC<MilitaryIconProps> = ({ iconName, ...props }
     }
   };
   
-  return getIcon(iconName);
+  return getIcon(finalIconName);
 };
